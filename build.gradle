@@ -1,0 +1,112 @@
+plugins {
+    id 'java'
+    id("xyz.jpenilla.run-paper") version "2.3.1"
+}
+
+group = 'de.chriss1998'
+version = '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "spigotmc-repo"
+        url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
+    }
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+}
+
+dependencies {
+    compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+    
+    // Database dependencies
+    implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation("mysql:mysql-connector-java:8.0.33")
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.3.3")
+    
+    // Configuration
+    implementation("org.yaml:snakeyaml:2.2")
+
+}
+
+// Lazily configure the runServer task from run-paper plugin
+tasks.named('runServer') {
+    // Configure the Minecraft version for our task.
+    // This is the only required configuration besides applying the plugin.
+    // Your plugin's jar (or shadowJar if present) will be used automatically.
+    minecraftVersion("1.21")
+}
+
+def targetJavaVersion = 21
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+tasks.named('processResources') {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+// Copy the built plugin JAR to the external server plugins directory
+// Default: D:/minecraft/server/plugins
+// Override via: -PpluginDeployDir=C:/path/to/plugins or environment PLUGIN_DEPLOY_DIR
+def pluginDeployDir = (project.findProperty('pluginDeployDir') ?: System.getenv('PLUGIN_DEPLOY_DIR') ?: 'D:/minecraft/server/plugins')
+
+tasks.register('copyPluginJar', Copy) {
+    // Wähle shadowJar falls vorhanden, sonst fallback auf jar
+    def artifactTask = project.plugins.hasPlugin('com.gradleup.shadow') ? tasks.named('shadowJar') : tasks.named('jar')
+    dependsOn(artifactTask)
+    from(artifactTask.flatMap { it.archiveFile })
+    into file(pluginDeployDir)
+    // Zielordner enthält evtl. gesperrte/unlesbare Dateien (z. B. LuckPerms DB) – kein State-Tracking
+    doNotTrackState("Destination plugins directory may contain unreadable/locked files (e.g., LuckPerms DB), so Gradle must not snapshot it.")
+}
+
+// Run copy after common build tasks
+tasks.named('build') {
+    // Wenn Shadow aktiv ist, stelle sicher, dass shadowJar gebaut wird
+    // (Kein Shadow-Plugin aktiv – Build nutzt reguläres Jar)
+    finalizedBy('copyPluginJar')
+}
+tasks.named('jar') {
+    // Fat-JAR: Laufzeitabhängigkeiten in das Plugin-JAR aufnehmen
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({
+        configurations.runtimeClasspath
+            .filter { it.exists() }
+            .collect { it.isDirectory() ? it : zipTree(it) }
+    })
+
+    // Signaturen ausschließen, um Konflikte zu vermeiden
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+
+    finalizedBy('copyPluginJar')
+}
+
+// Alte, compile-zeitliche Paper-Klasse ausschließen; wir verwenden eine reflektionsbasierte Bridge
+sourceSets {
+    main {
+        java {
+            exclude 'de/chriss1998/theLabChatLog/listener/PaperChatEventListener.java'
+        }
+    }
+}

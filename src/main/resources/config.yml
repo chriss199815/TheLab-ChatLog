@@ -1,0 +1,136 @@
+# TheLab ChatLog Plugin Configuration
+# ===========================================
+
+# Database Configuration
+database:
+  # Database type: mysql or mariadb
+  type: "mysql"
+  
+  # Connection settings
+  host: "localhost"
+  port: 3306
+  database: "thelab_chatlog"
+  username: "app"
+  password: "your_password_here"
+  
+  # Connection pool settings (HikariCP)
+  pool:
+    maximum_pool_size: 10
+    minimum_idle: 2
+    connection_timeout: 30000  # 30 seconds
+    idle_timeout: 600000       # 10 minutes
+    max_lifetime: 1800000      # 30 minutes
+    leak_detection_threshold: 60000  # 1 minute
+  
+  # SSL settings
+  ssl:
+    enabled: false
+    trust_server_certificate: false
+    certificate_path: ""
+
+# Server Configuration
+server:
+  # Unique server name/identifier for multi-server setups
+  name: "TheLab-Main"
+  
+  # Server display name
+  display_name: "TheLab Minecraft Server"
+
+# Chat Logging Settings
+chat_logging:
+  # Enable/disable chat message logging
+  enabled: true
+  
+  # Log different types of messages
+  log_types:
+    chat: true              # Regular chat messages
+    private_messages: true  # Private messages (/msg, /tell)
+    commands: false         # Commands (can be sensitive)
+    system_messages: true   # Server system messages
+    join_leave: true        # Player join/leave messages
+    death_messages: true    # Death messages
+    achievements: true      # Achievement messages
+    broadcasts: true        # Server broadcasts
+  
+  # Channels to log (empty = all channels)
+  channels:
+    - "global"
+    - "local"
+    - "team"
+  
+  # Players to exclude from logging (by UUID or name)
+  excluded_players: []
+  
+  # Sensitive content filtering
+  filter_sensitive_data: true
+  
+  # Maximum message length to store
+  max_message_length: 1000
+
+# Session Tracking
+session_tracking:
+  # Enable player session tracking
+  enabled: true
+  
+  # Track IP addresses (privacy consideration)
+  track_ip_addresses: false
+  
+  # Track client information
+  track_client_info: true
+
+# Server Event Logging
+server_events:
+  # Enable server event logging
+  enabled: true
+  
+  # Log different event types
+  log_types:
+    server_start_stop: true
+    plugin_events: true
+    world_events: true
+    errors: true
+    warnings: true
+    info: false  # Can be very verbose
+
+# Performance Settings
+performance:
+  # Async database operations
+  async_operations: true
+  
+  # Batch insert settings
+  batch_size: 50
+  batch_timeout: 5000  # 5 seconds
+  
+  # Queue settings for high-load servers
+  message_queue_size: 1000
+  
+  # Enable connection health checks
+  health_checks: true
+
+# Debug and Maintenance
+debug:
+  # Enable debug logging
+  enabled: false
+  
+  # Log SQL queries (for debugging)
+  log_sql: false
+  
+  # Enable performance metrics
+  performance_metrics: false
+
+# Data Retention
+retention:
+  # Enable automatic cleanup of old data
+  enabled: false
+  
+  # Keep chat messages for X days (0 = forever)
+  chat_messages_days: 90
+  
+  # Keep session data for X days (0 = forever)
+  session_data_days: 30
+  
+  # Keep server events for X days (0 = forever)
+  server_events_days: 30
+  
+  # Cleanup interval in hours
+  cleanup_interval: 24

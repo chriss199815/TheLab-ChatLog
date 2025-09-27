@@ -1,0 +1,30 @@
+name: TheLab-ChatLog
+version: '0.0.1-SNAPSHOT'
+main: de.chriss1998.theLabChatLog.TheLabChatLog
+api-version: '1.21'
+description: 'Comprehensive chat logging plugin for TheLab Minecraft server'
+author: 'chriss1998'
+website: 'https://github.com/chriss1998/TheLab-ChatLog'
+
+# Plugin dependencies (soft dependencies for better compatibility)
+softdepend: []
+
+# Commands (for future administration features)
+commands:
+  chatlog:
+    description: 'Main command for ChatLog administration'
+    usage: '/chatlog <reload|stats|export>'
+    permission: 'thelab.chatlog.admin'
+    aliases: ['cl', 'logs']
+
+# Permissions
+permissions:
+  thelab.chatlog.admin:
+    description: 'Access to ChatLog administration commands'
+    default: op
+  thelab.chatlog.view:
+    description: 'View chat logs'
+    default: op
+  thelab.chatlog.export:
+    description: 'Export chat logs'
+    default: op
