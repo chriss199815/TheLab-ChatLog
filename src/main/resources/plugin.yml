@@ -16,6 +16,11 @@ commands:
     usage: '/chatlog <help|reload|stats|test|countme|history|historychat|historycmd>'
     permission: 'thelab.chatlog.admin'
     aliases: ['cl', 'logs']
+  chatloggui:
+    description: 'Öffnet die ChatLog GUI'
+    usage: '/chatloggui'
+    permission: 'thelab.chatlog.admin'
+    aliases: ['clgui']
 
 # Permissions
 permissions:

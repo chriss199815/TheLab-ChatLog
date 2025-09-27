@@ -6,8 +6,11 @@ import de.chriss1998.theLabChatLog.dao.ChatDAO;
 import de.chriss1998.theLabChatLog.listener.ChatEventListener;
 import de.chriss1998.theLabChatLog.command.ChatLogCommand;
 import de.chriss1998.theLabChatLog.command.ChatLogTabCompleter;
+import de.chriss1998.theLabChatLog.command.ChatLogGuiCommand;
 import org.bukkit.event.Listener;
 import de.chriss1998.theLabChatLog.listener.PaperChatEventBridge;
+import de.chriss1998.theLabChatLog.listener.PlayerSelectListener;
+import de.chriss1998.theLabChatLog.listener.PlayerFunctionsListener;
 
 public final class TheLabChatLog extends JavaPlugin {
 
@@ -59,6 +62,16 @@ public final class TheLabChatLog extends JavaPlugin {
             getCommand("chatlog").setExecutor(exec);
             getCommand("chatlog").setTabCompleter(new ChatLogTabCompleter(this));
         }
+
+        // GUI-Befehl registrieren
+        if (getCommand("chatloggui") != null) {
+            getCommand("chatloggui").setExecutor(new ChatLogGuiCommand(this));
+        }
+
+        // Listener für die Spieler-Auswahl-GUI registrieren
+        getServer().getPluginManager().registerEvents(new PlayerSelectListener(), this);
+        // Listener für das Funktionsmenü registrieren
+        getServer().getPluginManager().registerEvents(new PlayerFunctionsListener(), this);
     }
 
     @Override
