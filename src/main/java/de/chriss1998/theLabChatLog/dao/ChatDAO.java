@@ -5,7 +5,6 @@ import de.chriss1998.theLabChatLog.model.ChatMessage;
 import de.chriss1998.theLabChatLog.model.CommandLog;
 
 import java.sql.*;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -65,6 +64,48 @@ public class ChatDAO {
             command_text, world_name, location_x, location_y, location_z,
             is_cancelled, metadata_json, `timestamp`
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+
+    private static final String SELECT_COMMAND_LOGS_BY_PLAYER = """
+        SELECT * FROM `command_logs`
+        WHERE player_uuid = ?
+        ORDER BY `timestamp` DESC
+        LIMIT ? OFFSET ?
+        """;
+
+    // Combined history (CHAT + COMMAND) for a player
+    private static final String SELECT_COMBINED_HISTORY_BY_PLAYER = """
+        SELECT * FROM (
+            SELECT
+                'CHAT' AS entry_type,
+                cm.`timestamp` AS ts,
+                cm.message_content AS text,
+                cm.message_type AS subtype,
+                cm.world_name AS world_name,
+                cm.location_x AS location_x,
+                cm.location_y AS location_y,
+                cm.location_z AS location_z,
+                NULL AS source_type,
+                cm.is_cancelled AS is_cancelled
+            FROM chat_messages cm
+            WHERE cm.player_uuid = ?
+            UNION ALL
+            SELECT
+                'COMMAND' AS entry_type,
+                cl.`timestamp` AS ts,
+                cl.command_text AS text,
+                NULL AS subtype,
+                cl.world_name AS world_name,
+                cl.location_x AS location_x,
+                cl.location_y AS location_y,
+                cl.location_z AS location_z,
+                cl.source_type AS source_type,
+                cl.is_cancelled AS is_cancelled
+            FROM command_logs cl
+            WHERE cl.player_uuid = ?
+        ) t
+        ORDER BY ts DESC
+        LIMIT ? OFFSET ?
         """;
     
     public ChatDAO(DatabaseManager databaseManager, Logger logger) {
@@ -227,6 +268,68 @@ public class ChatDAO {
             return messages;
         });
     }
+
+    /**
+     * Get command logs by player UUID
+     */
+    public CompletableFuture<List<CommandLog>> getCommandLogsByPlayerAsync(String playerUuid, int limit, int offset) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<CommandLog> logs = new ArrayList<>();
+            try (Connection connection = databaseManager.getConnection();
+                 PreparedStatement statement = connection.prepareStatement(SELECT_COMMAND_LOGS_BY_PLAYER)) {
+
+                statement.setString(1, playerUuid);
+                statement.setInt(2, limit);
+                statement.setInt(3, offset);
+
+                try (ResultSet rs = statement.executeQuery()) {
+                    while (rs.next()) {
+                        logs.add(mapResultSetToCommandLog(rs));
+                    }
+                }
+            } catch (SQLException e) {
+                logger.log(Level.WARNING, "Failed to get command logs for player: " + playerUuid, e);
+            }
+            return logs;
+        });
+    }
+
+    /**
+     * Get combined history (chat + commands) by player UUID, ordered by timestamp DESC
+     */
+    public CompletableFuture<List<HistoryEntry>> getCombinedHistoryByPlayerAsync(String playerUuid, int limit, int offset) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<HistoryEntry> entries = new ArrayList<>();
+            try (Connection connection = databaseManager.getConnection();
+                 PreparedStatement statement = connection.prepareStatement(SELECT_COMBINED_HISTORY_BY_PLAYER)) {
+
+                statement.setString(1, playerUuid);
+                statement.setString(2, playerUuid);
+                statement.setInt(3, limit);
+                statement.setInt(4, offset);
+
+                try (ResultSet rs = statement.executeQuery()) {
+                    while (rs.next()) {
+                        HistoryEntry e = new HistoryEntry();
+                        e.entryType = rs.getString("entry_type");
+                        e.timestamp = rs.getTimestamp("ts");
+                        e.text = rs.getString("text");
+                        e.subtype = rs.getString("subtype");
+                        e.worldName = rs.getString("world_name");
+                        e.locationX = rs.getObject("location_x", Double.class);
+                        e.locationY = rs.getObject("location_y", Double.class);
+                        e.locationZ = rs.getObject("location_z", Double.class);
+                        e.sourceType = rs.getString("source_type");
+                        e.cancelled = rs.getBoolean("is_cancelled");
+                        entries.add(e);
+                    }
+                }
+            } catch (SQLException e) {
+                logger.log(Level.WARNING, "Failed to get combined history for player: " + playerUuid, e);
+            }
+            return entries;
+        });
+    }
     
     /**
      * Get chat messages within a time range
@@ -364,6 +467,34 @@ public class ChatDAO {
         
         return message;
     }
+
+    /**
+     * Map ResultSet to CommandLog object
+     */
+    private CommandLog mapResultSetToCommandLog(ResultSet rs) throws SQLException {
+        CommandLog log = new CommandLog();
+        log.setId(rs.getLong("id"));
+        log.setCommandUuid(rs.getString("command_uuid"));
+        log.setServerName(rs.getString("server_name"));
+        String src = rs.getString("source_type");
+        if (src != null) {
+            try { log.setSourceType(CommandLog.SourceType.valueOf(src)); } catch (IllegalArgumentException ignored) {}
+        }
+        log.setPlayerUuid(rs.getString("player_uuid"));
+        log.setPlayerName(rs.getString("player_name"));
+        log.setCommandText(rs.getString("command_text"));
+        log.setWorldName(rs.getString("world_name"));
+        log.setLocationX(rs.getObject("location_x", Double.class));
+        log.setLocationY(rs.getObject("location_y", Double.class));
+        log.setLocationZ(rs.getObject("location_z", Double.class));
+        log.setCancelled(rs.getBoolean("is_cancelled"));
+        log.setMetadataJson(rs.getString("metadata_json"));
+        Timestamp ts = rs.getTimestamp("timestamp");
+        if (ts != null) {
+            log.setTimestamp(ts.toLocalDateTime());
+        }
+        return log;
+    }
     
     /**
      * Helper method to set double or null
@@ -375,4 +506,21 @@ public class ChatDAO {
             statement.setNull(parameterIndex, Types.DOUBLE);
         }
     }
+
+    /**
+     * Simple DTO for combined history entries
+     */
+    public static class HistoryEntry {
+        public String entryType; // CHAT or COMMAND
+        public Timestamp timestamp;
+        public String text;
+        public String subtype; // ChatMessage.MessageType as string (for CHAT)
+        public String worldName;
+        public Double locationX;
+        public Double locationY;
+        public Double locationZ;
+        public String sourceType; // CommandLog.SourceType as string (for COMMAND)
+        public boolean cancelled;
+    }
 }
+

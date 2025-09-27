@@ -1,5 +1,5 @@
 name: TheLab-ChatLog
-version: '0.0.1-SNAPSHOT'
+version: '${version}'
 main: de.chriss1998.theLabChatLog.TheLabChatLog
 api-version: '1.21'
 description: 'Comprehensive chat logging plugin for TheLab Minecraft server'
@@ -13,7 +13,7 @@ softdepend: []
 commands:
   chatlog:
     description: 'Main command for ChatLog administration'
-    usage: '/chatlog <reload|stats|export>'
+    usage: '/chatlog <help|reload|stats|test|countme|history|historychat|historycmd>'
     permission: 'thelab.chatlog.admin'
     aliases: ['cl', 'logs']
 

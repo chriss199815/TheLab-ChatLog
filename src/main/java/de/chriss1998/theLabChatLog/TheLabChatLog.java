@@ -5,6 +5,7 @@ import de.chriss1998.theLabChatLog.database.DatabaseManager;
 import de.chriss1998.theLabChatLog.dao.ChatDAO;
 import de.chriss1998.theLabChatLog.listener.ChatEventListener;
 import de.chriss1998.theLabChatLog.command.ChatLogCommand;
+import de.chriss1998.theLabChatLog.command.ChatLogTabCompleter;
 import org.bukkit.event.Listener;
 import de.chriss1998.theLabChatLog.listener.PaperChatEventBridge;
 
@@ -52,9 +53,11 @@ public final class TheLabChatLog extends JavaPlugin {
 
         getLogger().info("TheLab-ChatLog erfolgreich aktiviert.");
 
-        // Command-Executor registrieren
+        // Command-Executor und Tab-Completer registrieren
         if (getCommand("chatlog") != null) {
-            getCommand("chatlog").setExecutor(new ChatLogCommand(this));
+            ChatLogCommand exec = new ChatLogCommand(this);
+            getCommand("chatlog").setExecutor(exec);
+            getCommand("chatlog").setTabCompleter(new ChatLogTabCompleter(this));
         }
     }
 

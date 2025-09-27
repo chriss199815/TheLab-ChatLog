@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'de.chriss1998'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.2-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -23,12 +23,14 @@ dependencies {
     
     // Database dependencies
     implementation("com.zaxxer:HikariCP:5.1.0")
-    implementation("mysql:mysql-connector-java:8.0.33")
+    implementation("com.mysql:mysql-connector-j:8.4.0") {
+        exclude group: "com.google.protobuf", module: "protobuf-java"
+    }
     implementation("org.mariadb.jdbc:mariadb-java-client:3.3.3")
     
     // Configuration
     implementation("org.yaml:snakeyaml:2.2")
-
+    implementation("com.google.protobuf:protobuf-java:3.25.5")
 }
 
 // Lazily configure the runServer task from run-paper plugin
